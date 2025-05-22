@@ -15,7 +15,7 @@ def make_env():
 
 def run_planner_episode(planner):
     env = make_env()
-    obs = env.reset()
+    obs, _ = env.reset()
     total_reward = 0
     done = False
     steps = 0
@@ -24,7 +24,8 @@ def run_planner_episode(planner):
         # Select best action from CEM planner
         action_tensor = planner.plan(obs_tensor)
         action = int(action_tensor.squeeze().item())
-        obs, reward, done, _ = env.step(action)
+        obs, reward, terminated,truncated, _ = env.step(action)
+        done = terminated or truncated 
         total_reward += reward
         steps += 1
     return total_reward, steps
