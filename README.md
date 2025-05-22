@@ -71,9 +71,23 @@ Results are evaluated against the CartPole-v1 benchmark score of 500.
 
 ---
 
+## 🧠 DR-PETS Robustness Objective
+
+Unlike PETS, which maximizes expected reward over an ensemble of dynamics models, **DR-PETS directly optimizes a regularized reward objective**. It adds a penalty to trajectories that pass through low-density, uncertain regions of the state-action space:
+
+DR-PETS Objective:
+
+    J_DR = ExpectedReward - lambda * UncertaintyPenalty
+
+The penalty term is computed as the negative log-likelihood of the state-action sequence under a learned density model. This:
+
+- Eliminates the need for explicit perturbations or adversarial sampling.
+- Encourages the planner to stay in well-modeled, high-likelihood regions.
+- Makes the policy robust to model errors by avoiding out-of-distribution behavior.
+  
 ## 📬 Credits
 
-Based on PETS (Chua et al. 2018) and extensions from DR-PETS  <https://arxiv.org/abs/2503.20660>
+Based on PETS (Chua et al. 2018) [text](https://arxiv.org/abs/1805.12114) and extensions from DR-PETS  <https://arxiv.org/abs/2503.20660>
 
 ---
 
