@@ -73,7 +73,7 @@ Results are evaluated against the CartPole-v1 benchmark score of 500.
 
 ## 📬 Credits
 
-Based on PETS (Chua et al. 2018) and extensions from DR-PETS research.
+Based on PETS (Chua et al. 2018) and extensions from DR-PETS  <https://arxiv.org/abs/2503.20660>
 
 ---
 
