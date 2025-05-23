@@ -14,7 +14,8 @@ if config['experiment']['log_to_tensorboard']:
     writer = SummaryWriter(log_dir=config['experiment']['log_dir'])
 
 data = torch.load(config['experiment']['state_action_dataset'])
-dataset = TensorDataset(data)
+sa_inputs = data[:, :config['experiment']['state_dim'] + config['experiment']['action_dim']]
+dataset = TensorDataset(sa_inputs)
 dataloader = DataLoader(dataset, batch_size=config['experiment']['batch_size'], shuffle=True)
 
 model = StateActionDensityModel(
