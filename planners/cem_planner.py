@@ -2,17 +2,28 @@ import torch
 import torch.nn.functional as F
 
 def compute_dr_pets_score(predicted_states, actions, cost_fn, density_model, lambda_penalty):
-    H, N, _ = actions.shape
+    H, N, d = actions.shape
     traj_cost = torch.zeros(N)
     sa_pairs = []
+    penalty = torch.zeros_like(traj_cost)
     for t in range(H):
         s = predicted_states[t]
         a = actions[t]
         traj_cost += cost_fn(s, a)
         sa_pairs.append(torch.cat([s, a], dim=-1))
+
     sa_all = torch.cat(sa_pairs, dim=0)
-    log_probs = density_model.log_prob(sa_all).reshape(H, N)
-    penalty = -log_probs.mean(dim=0)
+    if lambda_penalty > 0.0:
+        sa_all = sa_all.clone().detach().requires_grad_(True)
+        log_probs = density_model.log_prob(sa_all)
+        grad_logp = torch.autograd.grad(log_probs.sum(), sa_all, create_graph=False)[0]
+        grad_logp = grad_logp.view(H, N, -1)
+
+        weights = traj_cost.view(1, N, 1).expand(H, N, grad_logp.size(-1))
+        weighted_grad = grad_logp * weights
+        penalty_vec = weighted_grad.sum(dim=0)  # [N, d]
+        penalty = penalty_vec.norm(dim=1)  # [N]
+
     return traj_cost + lambda_penalty * penalty
 
 class CEMPlanner:
@@ -22,10 +33,10 @@ class CEMPlanner:
         self.density_model = density_model
         self.lambda_penalty = lambda_penalty
         self.logger = logger
-        self.H = 30  # increased planning horizon
-        self.N = 1000  # increased number of samples
-        self.K = 100   # increased number of elites
-        self.I = 7     # increased number of iterations
+        self.H = horizon
+        self.N = num_samples
+        self.K = num_elites
+        self.I = num_iters
         self.action_dim = action_dim
         self.action_low = 0
         self.action_high = 1
@@ -55,8 +66,8 @@ class CEMPlanner:
             predicted_states = predicted_states[:-1]
 
             def cost_fn(s, a):
-                x = s[:, 0]       # cart position
-                theta = s[:, 2]   # pole angle
+                x = s[:, 0]
+                theta = s[:, 2]
                 return x.abs() + theta.abs()
 
             actions_onehot_seq = torch.stack([
@@ -64,10 +75,15 @@ class CEMPlanner:
                 for t in range(self.H)
             ])
 
-            scores = compute_dr_pets_score(predicted_states, actions_onehot_seq, cost_fn, self.density_model, self.lambda_penalty)
+            scores = compute_dr_pets_score(
+                predicted_states, actions_onehot_seq, cost_fn,
+                self.density_model, self.lambda_penalty
+            )
             elite_idxs = scores.topk(self.K, largest=False).indices
             elite_samples = samples[:, elite_idxs, :]
             mean = elite_samples.mean(dim=1)
-            std = elite_samples.std(dim=1)
+            std = elite_samples.std(dim=1) + 1e-2
 
-        return mean[0].round().unsqueeze(0)
+        action_plan = mean.round()
+        print("Planned action sequence:", action_plan.squeeze().tolist())
+        return action_plan[0].unsqueeze(0)

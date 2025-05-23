@@ -70,6 +70,11 @@ planner_drpets = CEMPlanner(
     num_iters=7,
     action_dim=action_dim
 )
+env = gym.make("CartPole-v1")
+obs, _ = env.reset()
+obs_traj = []
+action_traj = []
+total_reward = 0
 
 obs, _ = env.reset()
 obs_traj_drpets = []

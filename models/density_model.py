@@ -1,35 +1,56 @@
 import torch
 import torch.nn as nn
-from nflows.flows import Flow
-from nflows.distributions import StandardNormal
-from nflows.transforms import CompositeTransform, MaskedAffineAutoregressiveTransform
 
-class StateActionDensityModel:
+class StateActionDensityModel(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=128, num_flows=5):
-        self.input_dim = state_dim + action_dim
-        self.flow = self._build_flow(hidden_dim, num_flows)
+        super().__init__()
+        from nflows.flows import Flow
+        from nflows.distributions.normal import StandardNormal
+        from nflows.transforms import CompositeTransform, MaskedAffineAutoregressiveTransform
 
-    def _build_flow(self, hidden_dim, num_flows):
-        transforms = [
-            MaskedAffineAutoregressiveTransform(self.input_dim, hidden_dim)
-            for _ in range(num_flows)
-        ]
+        self.features = state_dim + action_dim
+
+        # Create 5 masked autoregressive transforms to match the saved model
+        transforms = []
+        for _ in range(num_flows):
+            transforms.append(
+                MaskedAffineAutoregressiveTransform(
+                    features=self.features,
+                    hidden_features=hidden_dim,
+                    num_blocks=2,
+                    use_residual_blocks=False,
+                    random_mask=False,
+                    activation=nn.ReLU(),
+                    dropout_probability=0.0
+                )
+            )
+
+        # Combine transforms
         transform = CompositeTransform(transforms)
-        distribution = StandardNormal([self.input_dim])
-        return Flow(transform, distribution)
+        
+        # Create flow with standard normal base distribution
+        self.flow = Flow(transform, StandardNormal([self.features]))
 
-    def fit(self, data_loader, epochs=20, lr=1e-3):
+    def log_prob(self, x):
+        # Clone if x doesn't require gradients, otherwise use as-is
+        if not x.requires_grad:
+            x = x.clone().detach().requires_grad_(True)
+        return self.flow.log_prob(x)
+
+    def fit(self, data, epochs=50, batch_size=128, lr=1e-3, device='cpu'):
+        self.flow.to(device)
+        data = data.to(device)
         optimizer = torch.optim.Adam(self.flow.parameters(), lr=lr)
-        self.flow.train()
+        dataset = torch.utils.data.TensorDataset(data)
+        loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
         for epoch in range(epochs):
-            for batch in data_loader:
-                x = batch[0]
-                loss = -self.flow.log_prob(x).mean()
+            total_loss = 0
+            for (batch,) in loader:
                 optimizer.zero_grad()
+                loss = -self.flow.log_prob(batch).mean()
                 loss.backward()
                 optimizer.step()
-
-    @torch.no_grad()
-    def log_prob(self, state_action):
-        self.flow.eval()
-        return self.flow.log_prob(state_action)
+                total_loss += loss.item() * batch.size(0)
+            avg_loss = total_loss / len(dataset)
+            print(f"Epoch {epoch+1}/{epochs} | Loss: {avg_loss:.4f}")

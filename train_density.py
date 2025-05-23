@@ -1,28 +1,30 @@
+import argparse
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
 from models.density_model import StateActionDensityModel
-from utils.config_loader import load_config, parse_cli_args
-from utils.validate_config import validate_config
-from torch.utils.tensorboard import SummaryWriter
+from utils.config_loader import load_config
 
-cli_args = parse_cli_args()
-config = load_config("configs/config.yaml", cli_args)
-validate_config(config)
+# Parse device argument
+parser = argparse.ArgumentParser()
+parser.add_argument('--device', default='cpu', help='Device to train on (e.g., "cuda" or "cpu")')
+args = parser.parse_args()
+device = args.device
 
-writer = None
-if config['experiment']['log_to_tensorboard']:
-    writer = SummaryWriter(log_dir=config['experiment']['log_dir'])
+# Load config and parameters
+config = load_config("configs/config.yaml")
+state_dim = config['experiment']['state_dim']
+action_dim = config['experiment']['action_dim']
+dataset_path = config['experiment']['density_dataset_path']
+save_path = config['experiment']['density_model_path']
 
-data = torch.load(config['experiment']['state_action_dataset'])
-sa_inputs = data[:, :config['experiment']['state_dim'] + config['experiment']['action_dim']]
-dataset = TensorDataset(sa_inputs)
-dataloader = DataLoader(dataset, batch_size=config['experiment']['batch_size'], shuffle=True)
+# Load dataset
+print("Loading dataset from:", dataset_path)
+data = torch.load(dataset_path).to(device)
 
-model = StateActionDensityModel(
-    state_dim=config['experiment']['state_dim'],
-    action_dim=config['experiment']['action_dim']
-)
-model.fit(dataloader, epochs=config['experiment']['num_epochs'], lr=1e-3)
-torch.save(model.flow.state_dict(), config['experiment']['density_model_path'])
-if writer:
-    writer.close()
+# Initialize and train model
+model = StateActionDensityModel(state_dim, action_dim)
+model.fit(data, epochs=50, batch_size=128, device=device)
+
+# Save model
+print("Saving trained density model to:", save_path)
+torch.save(model.flow.state_dict(), save_path)
