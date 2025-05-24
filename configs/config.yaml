@@ -1,5 +1,5 @@
 experiment:
-  state_dim: 4
+  state_dim: 8
   action_dim: 2
   ensemble_size: 5
   density_dataset_path: state_action_dataset.pt
