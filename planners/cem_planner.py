@@ -22,10 +22,10 @@ class CEMPlanner:
         self.density_model = density_model
         self.lambda_penalty = lambda_penalty
         self.logger = logger
-        self.H = 30  # increased planning horizon
-        self.N = 1000  # increased number of samples
-        self.K = 100   # increased number of elites
-        self.I = 7     # increased number of iterations
+        self.H = horizon  # increased planning horizon
+        self.N = num_samples  # increased number of samples
+        self.K = num_elites   # increased number of elites
+        self.I = num_iters     # increased number of iterations
         self.action_dim = action_dim
         self.action_low = 0
         self.action_high = 1

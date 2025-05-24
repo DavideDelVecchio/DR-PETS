@@ -43,7 +43,7 @@ python train_density.py
 3. **Compare PETS vs DR-PETS**
 
 ```bash
-python scripts/compare_pets_drpets.py
+python compare_drpet_pet_different_pole_length.py
 ```
 
 4. **Visualize results**
