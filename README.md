@@ -39,11 +39,17 @@ python collect_dataset.py
 ```bash
 python train_density.py
 ```
-
-3. **Compare PETS vs DR-PETS**
+1. **Train the dynamics**
 
 ```bash
-python scripts/compare_pets_drpets.py
+python train_dynamics_and_export.py
+```
+
+
+4. **Compare PETS vs DR-PETS**
+
+```bash
+python compare_drpets_pets_different_pole_length.py
 ```
 
 4. **Visualize results**
