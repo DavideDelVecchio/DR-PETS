@@ -16,9 +16,16 @@ action_dim = config['experiment']['action_dim']
 ensemble_size = config['experiment']['ensemble_size']
 
 data = torch.load("state_action_dataset.pt").to(device)
+print(f"Full dataset shape: {data.shape}")
+
 states = data[:, :state_dim]
 actions = data[:, state_dim:state_dim + action_dim]
-next_states = data[:, state_dim + action_dim:]
+next_states = data[:, state_dim + action_dim:]  # Fix the slicing for next states
+
+print(f"States shape: {states.shape}")
+print(f"Actions shape: {actions.shape}")
+print(f"Next states shape: {next_states.shape}")
+
 targets = next_states
 
 # Train ensemble

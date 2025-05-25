@@ -17,10 +17,11 @@ action_dim = config['experiment']['action_dim']
 dataset_path = config['experiment']['density_dataset_path']
 save_path = config['experiment']['density_model_path']
 
+
 # Load dataset
 print("Loading dataset from:", dataset_path)
 data = torch.load(dataset_path).to(device)
-
+data = data[:, :state_dim + action_dim]
 # Initialize and train model
 model = StateActionDensityModel(state_dim, action_dim)
 model.fit(data, epochs=50, batch_size=128, device=device)
