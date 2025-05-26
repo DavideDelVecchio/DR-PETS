@@ -93,12 +93,12 @@ python deploy/azure_deploy.py --delete-workspace
 
 The deployment uses auto-scaling compute clusters that scale down to zero nodes when not in use. Default configuration uses:
 
-| VM Size | GPU | vCPUs | Memory | Price/Hour (Est.) |
-|---------|-----|-------|--------|-------------------|
-| Standard_NC6 | 1x K80 | 6 | 56 GB | $0.90 |
-| Standard_NC12 | 2x K80 | 12 | 112 GB | $1.80 |
-| Standard_NC24 | 4x K80 | 24 | 224 GB | $3.60 |
-| Standard_ND40rs_v2 | 8x V100 | 40 | 672 GB | $16.00 |
+| VM Size | GPU | vCPUs | Memory |  
+|---------|-----|-------|--------|
+| Standard_NC6 | 1x K80 | 6 | 56 GB |  
+| Standard_NC12 | 2x K80 | 12 | 112 GB |  
+| Standard_NC24 | 4x K80 | 24 | 224 GB |  
+| Standard_ND40rs_v2 | 8x V100 | 40 | 672 GB |  
 
 **Note**: Prices are approximate and may vary by region. Check the [Azure pricing calculator](https://azure.microsoft.com/en-us/pricing/calculator/) for current rates.
 
