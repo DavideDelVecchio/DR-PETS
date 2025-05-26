@@ -28,6 +28,9 @@ eval_lengths           = [0.2,0.3,0.4,0.5,0.6,0.7,0.8]
 from utils.device import get_device
 device = get_device(args.device if "args" in locals() else "auto")
 
+dyn=None
+den=None
+planner= None
 checkpoint_dir.mkdir(exist_ok=True)
 # ─────────────────────────────────────────
 # CSV helper
@@ -162,38 +165,37 @@ for ep in range(1, episodes+1):
 
         ep_reward += r; obs = nxt; global_step+=1
         if term or trunc: break
-
+    row = {
+    "episode": ep,
+    "reward" : ep_reward,
+    "score_pets"  : scores["score_pets"],
+    "score_drpets": scores["score_drpets"],
+    "plan_latency": np.mean(step_times)}
+    append_to_csv(row)
     # TensorBoard metrics
     writer.add_scalar("train/reward", ep_reward, ep)
     writer.add_scalar("debug/score_pets"  , scores["score_pets"]  , ep)
     writer.add_scalar("debug/score_drpets", scores["score_drpets"], ep)
     writer.add_scalar("debug/plan_latency" , np.mean(step_times)   , ep)
 
-    # Multi-length eval
-    eval_res = evaluate_different_lengths(planner, eval_lengths, episodes=3)
-    for L,avg_r in eval_res.items():
-        writer.add_scalar(f"eval/len_{L:.2f}", avg_r, ep)
+# Multi-length eval
+dyn.eval()
+den.eval()
+eval_res = evaluate_different_lengths(planner, eval_lengths, episodes=50)
+for L,avg_r in eval_res.items():
+    writer.add_scalar(f"eval/len_{L:.2f}", avg_r, ep)
 
-    # CSV row
-    row = {
-        "episode": ep,
-        "reward" : ep_reward,
-        "score_pets"  : scores["score_pets"],
-        "score_drpets": scores["score_drpets"],
-        "plan_latency": np.mean(step_times),
-        **{f"len_{L:.2f}": avg for L,avg in eval_res.items()}
-    }
-    append_to_csv(row)
 
-    # Save checkpoints and upload
-    dyn_path = checkpoint_dir / f"dynamics_ep{ep}.pt"
-    den_path = checkpoint_dir / f"density_ep{ep}.pt"
-    torch.save(dyn.state_dict(), dyn_path)
-    torch.save(den.state_dict(), den_path)
-    upload_to_cloud(dyn_path); upload_to_cloud(den_path)
-    upload_to_cloud(csv_path)
 
-    print(f"✅ ep_reward={ep_reward} | mean plan latency={np.mean(step_times):.4f}s")
+# Save checkpoints and upload
+dyn_path = checkpoint_dir / f"dynamics_ep{ep}.pt"
+den_path = checkpoint_dir / f"density_ep{ep}.pt"
+torch.save(dyn.state_dict(), dyn_path)
+torch.save(den.state_dict(), den_path)
+# upload_to_cloud(dyn_path); upload_to_cloud(den_path)
+# upload_to_cloud(csv_path)
+
+print(f"✅ ep_reward={ep_reward} | mean plan latency={np.mean(step_times):.4f}s")
 
 writer.close()
 print("\nTraining complete! View logs with:\n  tensorboard --logdir runs")
