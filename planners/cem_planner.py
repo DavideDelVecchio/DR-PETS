@@ -29,10 +29,6 @@ class CEMPlanner:
         self.num_iters       = num_iters
         self.num_particles   = num_particles  # Q
 
-    # ------------------------------------------------------------------
-    # PETS-compliant planning: sample N sequences, roll out Q particles,
-    # update CEM distribution, return first action + PETS & DR-PETS scores
-    # ------------------------------------------------------------------
     def plan(self, obs_tensor):
         device = obs_tensor.device
         T, N, Q = self.horizon, self.num_samples, self.num_particles
@@ -49,7 +45,7 @@ class CEMPlanner:
             ).clamp(-1.0, 1.0)                              # [T, N, A]
 
             # 2) Broadcast to Q particles: [T, N, Q, A]
-            seq = seq.unsqueeze(2).expand(-1, N, Q, -1)
+            seq = seq.unsqueeze(2).expand(-1, -1, Q, -1)
 
             # Containers for reward and penalty
             rewards   = torch.zeros(N, Q, device=device)
@@ -59,27 +55,30 @@ class CEMPlanner:
             for model in self.dynamics_model.models:
                 model.eval()
                 # Duplicate the current state for every (N·Q) particle
-                particles = obs_tensor.repeat(N * Q, 1).view(N, Q, -1)
+                particles = obs_tensor.repeat(N * Q, 1)
+                particles = particles.reshape(N, Q, -1)
 
                 for t in range(T):
-                    actions = seq[t]                                 # [N, Q, A]
-                    sa_batch = torch.cat([particles, actions], dim=2).view(N * Q, -1)
-
+                    actions = seq[t]  # [N, Q, A]
+                    
+                    # Flatten batch dimensions for model input
+                    particles_flat = particles.reshape(N * Q, -1)
+                    actions_flat = actions.reshape(N * Q, -1)
+                    
                     # Predict next state
-                    next_state = model(
-                        particles.view(N * Q, -1),
-                        actions  .view(N * Q, -1)
-                    ).view(N, Q, -1)
+                    next_state = model(particles_flat, actions_flat)
+                    next_state = next_state.reshape(N, Q, -1)
 
                     # CartPole reward (+1 per time-step until termination)
                     rewards += 1.0 / len(self.dynamics_model.models)
 
                     # DR-PETS penalty
                     if self.epsilon > 0:
+                        sa_batch = torch.cat([particles_flat, actions_flat], dim=1)
                         sa_batch = sa_batch.detach().clone().requires_grad_(True)
                         logp = self.density_model.flow.log_prob(sa_batch)
                         grad = torch.autograd.grad(logp.sum(), sa_batch, create_graph=False)[0]
-                        grad_norm = grad.norm(dim=1).view(N, Q)
+                        grad_norm = grad.norm(dim=1).reshape(N, Q)
                         penalties += grad_norm / len(self.dynamics_model.models)
 
                     particles = next_state

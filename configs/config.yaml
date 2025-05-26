@@ -1,0 +1,6 @@
+experiment:
+  name: cartpole_nominal
+  state_dim: 4
+  action_dim: 2
+  ensemble_size: 5
+  epsilon: 0.05
