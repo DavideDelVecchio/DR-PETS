@@ -16,4 +16,4 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # Collect random data, then train+plan online
-python scripts/main_train_and_plan.py --config configs/cartpole.yaml
+python main_train_and_plan.py --config configs/cartpole.yaml
