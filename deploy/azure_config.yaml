@@ -1,57 +1,156 @@
 # Azure ML Configuration for DR-PETS Training
 # This file contains settings for deploying and running DR-PETS in Azure ML
 
+# Active profile - choose between "development" or "production"
+active_profile: "development"
+
+# Deployment profiles
+profiles:
+  development:
+    # Development environment (cost-optimized)
+    azure:
+      subscription_id: null  # Set via environment variable AZURE_SUBSCRIPTION_ID
+      resource_group: null   # Set via environment variable AZURE_RESOURCE_GROUP
+      workspace_name: drpets-workspace-dev
+      region: eastus
+      
+      # Compute cluster - optimized for cost
+      compute_name: gpu-cluster-dev
+      vm_size: Standard_NC4as_T4_v3  # NVIDIA T4 GPU, 4 cores, 28 GB memory (lower cost)
+      vm_priority: lowpriority  # Use spot instances for 80% cost savings
+      min_nodes: 0
+      max_nodes: 1
+      idle_seconds_before_scaledown: 300  # Scale down after 5 minutes of inactivity
+      
+      # Storage settings
+      datastore_name: drpets_datastore_dev
+      
+      # Cost management
+      budget_limit_usd: 20.0
+      auto_terminate: true
+      cost_alerts:
+        enabled: true
+        email: null  # Set to your email address
+        thresholds: [5.0, 10.0, 15.0]  # USD thresholds
+      
+  production:
+    # Production environment (performance-optimized)
+    azure:
+      subscription_id: null
+      resource_group: null
+      workspace_name: drpets-workspace-prod
+      region: eastus
+      
+      # Compute cluster - optimized for performance
+      compute_name: gpu-cluster-prod
+      vm_size: Standard_NC6s_v3  # NVIDIA V100 GPU, 6 cores, 112 GB memory
+      vm_priority: lowpriority  # Use spot instances for 80% cost savings
+      min_nodes: 0
+      max_nodes: 2
+      idle_seconds_before_scaledown: 600  # Scale down after 10 minutes of inactivity
+      
+      # Storage settings
+      datastore_name: drpets_datastore_prod
+      
+      # Cost management
+      budget_limit_usd: 100.0
+      auto_terminate: true
+      cost_alerts:
+        enabled: true
+        email: null
+        thresholds: [25.0, 50.0, 75.0]
+
+# Active Azure settings (automatically populated based on active profile)
 azure:
-  # Workspace settings
-  subscription_id: null  # Set via environment variable AZURE_SUBSCRIPTION_ID
-  resource_group: null   # Set via environment variable AZURE_RESOURCE_GROUP
-  workspace_name: drpets-workspace
+  # These settings are populated from the active profile - do not edit here
+  subscription_id: null
+  resource_group: null
+  workspace_name: drpets-workspace-dev
   region: eastus
   
-  # Compute cluster specifications
-  compute_name: gpu-cluster
-  vm_size: Standard_NC6s_v3  # NVIDIA V100 GPU, 6 cores, 112 GB memory
-  # Alternatives: Standard_NC12s_v3 (2x V100 GPUs), Standard_NC24s_v3 (4x V100 GPUs)
-  min_nodes: 0  # Scale to 0 when not in use to save costs
-  max_nodes: 2  # Scale up to 2 nodes (reduced from 4 due to higher GPU power)
-  idle_seconds_before_scaledown: 600  # Scale down after 10 minutes of inactivity
+  compute_name: gpu-cluster-dev
+  vm_size: Standard_NC4as_T4_v3
+  vm_priority: lowpriority
+  min_nodes: 0
+  max_nodes: 1
+  idle_seconds_before_scaledown: 300
   
-  # Storage settings
-  datastore_name: drpets_datastore
+  datastore_name: drpets_datastore_dev
   
-  # Budget constraints
-  budget_limit_usd: 100.0  # Maximum budget in USD (increased for V100 pricing)
-  auto_terminate: true    # Automatically terminate when training completes
+  budget_limit_usd: 20.0
+  auto_terminate: true
 
-# Experiment configuration
+# Experiment configuration for each profile
+experiment_profiles:
+  development:
+    # Development experiment (cost-optimized)
+    name: dr-pets-training-dev
+    description: "DR-PETS training with cost optimization"
+    
+    # Model parameters
+    state_dim: 4
+    action_dim: 2
+    ensemble_size: 3  # Reduced for development
+    epsilon: 0.05
+    
+    # Training parameters - cost optimized
+    episodes: 50  # Reduced for faster iteration
+    horizon: 25
+    num_samples: 1000  # Reduced for lower memory/compute usage
+    num_particles: 16  # Reduced for T4 GPU
+    device: cuda
+  
+  production:
+    # Production experiment (performance-optimized)
+    name: dr-pets-training-prod
+    description: "DR-PETS training with performance optimization"
+    
+    # Model parameters
+    state_dim: 4
+    action_dim: 2
+    ensemble_size: 5
+    epsilon: 0.05
+    
+    # Training parameters - performance optimized
+    episodes: 100
+    horizon: 25
+    num_samples: 2000
+    num_particles: 32
+    device: cuda
+
+# Active experiment settings (automatically populated based on active profile)
 experiment:
-  name: dr-pets-training
-  description: DR-PETS training with GPU acceleration
+  name: dr-pets-training-dev
+  description: "DR-PETS training with cost optimization"
   
   # Model parameters
   state_dim: 4
   action_dim: 2
-  ensemble_size: 5
+  ensemble_size: 3
   epsilon: 0.05
   
   # Training parameters
-  episodes: 100
+  episodes: 50
   horizon: 25
-  num_samples: 2000  # Increased due to V100's higher throughput
-  num_particles: 32  # Increased for better parallelization on V100
-  device: cuda  # Use GPU for training
+  num_samples: 1000
+  num_particles: 16
+  device: cuda
   
   # Checkpointing
   checkpointing:
     enabled: true
-    frequency: 10  # Save checkpoint every 10 episodes
+    frequency: 5  # Save checkpoint every 5 episodes in dev mode
     path: ./checkpoints
+    blob_storage:
+      enabled: true  # Store checkpoints in blob storage
+      container_name: "checkpoints"
+      retention_days: 7  # Auto-delete old checkpoints
     
   # Data collection
   collect_data: true
-  dataset_size: 10000
+  dataset_size: 5000  # Reduced for development
   
-  # Hyperparameter optimization (optional)
+  # Hyperparameter optimization
   hyperparameter_tuning:
     enabled: false
     parameters:
@@ -61,6 +160,11 @@ experiment:
         max_value: 0.1
       ensemble_size:
         values: [3, 5, 7]
+    # Cost-aware optimization
+    max_total_runs: 10
+    max_concurrent_runs: 2
+    early_termination:
+      enabled: true  # Terminate underperforming runs
   
   # Environment
   env:
@@ -80,19 +184,49 @@ experiment:
   profiling:
     enabled: true
     start_step: 0
-    num_steps: 100
+    num_steps: 50  # Reduced for development
     
-  # V100 specific optimizations  
-  v100_optimizations:
-    enabled: true
-    mixed_precision: true  # Use FP16 for better performance
-    cudnn_benchmark: true  # Optimize CUDA operations
-    batch_size_multiplier: 2.0  # Larger batches for V100's capacity
+  # GPU optimizations
+  gpu_optimizations:
+    # T4 optimizations (for development)
+    t4:
+      enabled: true
+      mixed_precision: true
+      cudnn_benchmark: true
+      batch_size_multiplier: 1.0
+      memory_efficient: true
     
+    # V100 optimizations (for production)
+    v100:
+      enabled: false  # Disabled in development mode
+      mixed_precision: true
+      cudnn_benchmark: true
+      batch_size_multiplier: 2.0
+  
   # Early stopping
   early_stopping:
     enabled: true
     metric_name: reward
     goal: maximize
-    patience: 20
+    patience: 10  # Reduced for development
+    
+  # Cost management
+  cost_management:
+    enabled: true
+    # Time-based cost controls
+    max_runtime_hours: 3.0  # Maximum runtime in hours
+    scheduled_times:
+      enabled: false
+      start_time: "22:00"  # Start at night for lower rates
+      end_time: "06:00"
+    # Resource usage monitoring
+    resource_monitoring:
+      enabled: true
+      interval_seconds: 60
+      metrics: ["gpu_utilization", "memory_usage", "idle_time"]
+    # Auto-shutdown triggers
+    auto_shutdown:
+      no_improvement_minutes: 30  # Shut down if no reward improvement
+      gpu_idle_minutes: 10  # Shut down if GPU utilization below threshold
+      target_completion: 0.8  # Shutdown after 80% of expected episodes
 
