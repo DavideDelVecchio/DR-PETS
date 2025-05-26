@@ -1,0 +1,91 @@
+# Azure ML Configuration for DR-PETS Training
+# This file contains settings for deploying and running DR-PETS in Azure ML
+
+azure:
+  # Workspace settings
+  subscription_id: null  # Set via environment variable AZURE_SUBSCRIPTION_ID
+  resource_group: null   # Set via environment variable AZURE_RESOURCE_GROUP
+  workspace_name: drpets-workspace
+  region: eastus
+  
+  # Compute cluster specifications
+  compute_name: gpu-cluster
+  vm_size: Standard_NC6  # Tesla K80 GPU, 6 cores, 56 GB memory
+  # Alternatives: Standard_NC12 (2 GPUs), Standard_NC24 (4 GPUs), Standard_ND40rs_v2 (8 V100 GPUs)
+  min_nodes: 0  # Scale to 0 when not in use to save costs
+  max_nodes: 4  # Scale up to 4 nodes for parallel training
+  idle_seconds_before_scaledown: 1200  # Scale down after 20 minutes of inactivity
+  
+  # Storage settings
+  datastore_name: drpets_datastore
+  
+  # Budget constraints
+  budget_limit_usd: 50.0  # Maximum budget in USD
+  auto_terminate: true    # Automatically terminate when training completes
+
+# Experiment configuration
+experiment:
+  name: dr-pets-training
+  description: DR-PETS training with GPU acceleration
+  
+  # Model parameters
+  state_dim: 4
+  action_dim: 2
+  ensemble_size: 5
+  epsilon: 0.05
+  
+  # Training parameters
+  episodes: 100
+  horizon: 25
+  num_samples: 1000
+  num_particles: 20
+  device: cuda  # Use GPU for training
+  
+  # Checkpointing
+  checkpointing:
+    enabled: true
+    frequency: 10  # Save checkpoint every 10 episodes
+    path: ./checkpoints
+    
+  # Data collection
+  collect_data: true
+  dataset_size: 10000
+  
+  # Hyperparameter optimization (optional)
+  hyperparameter_tuning:
+    enabled: false
+    parameters:
+      epsilon:
+        distribution: uniform
+        min_value: 0.01
+        max_value: 0.1
+      ensemble_size:
+        values: [3, 5, 7]
+  
+  # Environment
+  env:
+    name: CartPole-v1
+    seed: 42
+  
+  # Logging and monitoring
+  tensorboard:
+    enabled: true
+    update_frequency: 1  # Update TensorBoard every episode
+  
+  mlflow:
+    enabled: true
+    tracking_uri: null  # Use the default Azure ML tracking
+
+  # Performance monitoring
+  profiling:
+    enabled: true
+    start_step: 0
+    num_steps: 100
+    
+  # Early stopping
+  early_stopping:
+    enabled: true
+    metric_name: reward
+    goal: maximize
+    patience: 20
+
