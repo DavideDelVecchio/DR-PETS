@@ -10,17 +10,17 @@ azure:
   
   # Compute cluster specifications
   compute_name: gpu-cluster
-  vm_size: Standard_NC6  # Tesla K80 GPU, 6 cores, 56 GB memory
-  # Alternatives: Standard_NC12 (2 GPUs), Standard_NC24 (4 GPUs), Standard_ND40rs_v2 (8 V100 GPUs)
+  vm_size: Standard_NC6s_v3  # NVIDIA V100 GPU, 6 cores, 112 GB memory
+  # Alternatives: Standard_NC12s_v3 (2x V100 GPUs), Standard_NC24s_v3 (4x V100 GPUs)
   min_nodes: 0  # Scale to 0 when not in use to save costs
-  max_nodes: 4  # Scale up to 4 nodes for parallel training
-  idle_seconds_before_scaledown: 1200  # Scale down after 20 minutes of inactivity
+  max_nodes: 2  # Scale up to 2 nodes (reduced from 4 due to higher GPU power)
+  idle_seconds_before_scaledown: 600  # Scale down after 10 minutes of inactivity
   
   # Storage settings
   datastore_name: drpets_datastore
   
   # Budget constraints
-  budget_limit_usd: 50.0  # Maximum budget in USD
+  budget_limit_usd: 100.0  # Maximum budget in USD (increased for V100 pricing)
   auto_terminate: true    # Automatically terminate when training completes
 
 # Experiment configuration
@@ -37,8 +37,8 @@ experiment:
   # Training parameters
   episodes: 100
   horizon: 25
-  num_samples: 1000
-  num_particles: 20
+  num_samples: 2000  # Increased due to V100's higher throughput
+  num_particles: 32  # Increased for better parallelization on V100
   device: cuda  # Use GPU for training
   
   # Checkpointing
@@ -81,6 +81,13 @@ experiment:
     enabled: true
     start_step: 0
     num_steps: 100
+    
+  # V100 specific optimizations  
+  v100_optimizations:
+    enabled: true
+    mixed_precision: true  # Use FP16 for better performance
+    cudnn_benchmark: true  # Optimize CUDA operations
+    batch_size_multiplier: 2.0  # Larger batches for V100's capacity
     
   # Early stopping
   early_stopping:
