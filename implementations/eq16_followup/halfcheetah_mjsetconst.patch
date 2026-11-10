@@ -1,0 +1,23 @@
+--- /mnt/data/_fix_unpack/DRPETS_Equation16_L4_optimized/tasks.py	2026-11-04 10:51:37.000000000 +0000
++++ /mnt/data/DRPETS_Equation16_L4_mjsetconst_fixed/tasks.py	2026-11-04 15:13:53.820380218 +0000
+@@ -40,11 +40,20 @@
+         self.action_limit=1.
+         self.dt=float(self.env.unwrapped.dt)
+         assert self.obs_dim==18, f'Expected 18D including root position, got {self.obs_dim}'
++        # The environment is freshly created for this physical-parameter setting,
++        # so shifts always apply to the official nominal model (never cumulatively).
++        # Changing compiled MuJoCo body mass/inertia requires rebuilding constants.
++        # Keep the official XML unchanged: `settotalmass` is deprecated but still
++        # defines the correct nominal baseline for Gymnasium HalfCheetah-v5.
++        import mujoco
+         sim=self.env.unwrapped.model
++        data=self.env.unwrapped.data
+         sim.body_mass[:]*=float(mass)
+         sim.body_inertia[:]*=float(mass)
+         sim.geom_friction[:,0]*=float(friction)
+         sim.actuator_gear[:,0]*=float(actuation)
++        mujoco.mj_setConst(sim, data)
++        # mj_setConst uses mjData as scratch space; reset before simulation.
+         self.env.reset(seed=seed)
+     def reset(self,seed=None):
+         state,_=self.env.reset(seed=seed)

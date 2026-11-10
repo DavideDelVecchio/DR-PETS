@@ -1,12 +1,1 @@
-torch==2.2.0
-torchvision==0.17.0
-torchaudio==2.2.0
-gym==0.26.2
-numpy<2
-matplotlib
-pyyaml
-tensorboard
-tqdm
-nflows @ git+https://github.com/bayesiains/nflows.git
-boto3
-google-cloud-storage
+-r implementations/eq16/requirements.txt

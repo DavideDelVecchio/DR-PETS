@@ -1,0 +1,8 @@
+numpy>=1.24
+pandas>=2
+matplotlib>=3.8
+scipy>=1.10
+torch>=2.2
+# Full HalfCheetah runs:
+gymnasium[mujoco]>=1.1
+pytest>=8

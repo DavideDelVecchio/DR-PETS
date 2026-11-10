@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LocateResearchBucket",
+      "Effect": "Allow",
+      "Action": ["s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::REPLACE_BUCKET"
+    },
+    {
+      "Sid": "ReadWriteOnlyThisResearchRun",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::REPLACE_BUCKET/drpets-eight/REPLACE_RUN_ID/*"
+    },
+    {
+      "Sid": "ListOnlyThisResearchRun",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::REPLACE_BUCKET",
+      "Condition": {
+        "StringLike": {"s3:prefix": ["drpets-eight/REPLACE_RUN_ID/*"]}
+      }
+    }
+  ]
+}
