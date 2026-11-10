@@ -20,6 +20,14 @@ validate_followup_settings() {
   [[ "${BRIDGE_ALL:-0}" == 0 || "${BRIDGE_ALL:-0}" == 1 ]] || {
     echo 'BRIDGE_ALL must be 0 or 1' >&2; return 2;
   }
+  [[ "${RUN_CURVES_AFTER_BRIDGE:-0}" == 0 || "${RUN_CURVES_AFTER_BRIDGE:-0}" == 1 ]] || {
+    echo 'RUN_CURVES_AFTER_BRIDGE must be 0 or 1' >&2; return 2;
+  }
+  if [[ "${RUN_CURVES_AFTER_BRIDGE:-0}" == 1 ]]; then
+    [[ "$STAGE" == bridge && "${BRIDGE_ALL:-0}" == 0 && "${FAMILY:-all}" == all ]] || {
+      echo 'The stage queue requires STAGE=bridge, BRIDGE_ALL=0 and FAMILY=all' >&2; return 2;
+    }
+  fi
   require_positive_integer WORKERS "${WORKERS:-3}"
   require_positive_integer MAX_HOURS "${MAX_HOURS:-2}"
   require_positive_integer SYNC_INTERVAL "${SYNC_INTERVAL:-120}"
@@ -31,7 +39,7 @@ select_followup_seeds() {
     ireland) FOLLOWUP_SEEDS=(113 127 131 137) ;;
     *) echo 'SHARD must be frankfurt or ireland' >&2; return 2 ;;
   esac
-  if [[ "$STAGE" == bridge && "${BRIDGE_ALL:-0}" == 0 ]]; then
+  if [[ "$STAGE" == bridge && "${BRIDGE_ALL:-0}" == 0 && "${RUN_CURVES_AFTER_BRIDGE:-0}" == 0 ]]; then
     FOLLOWUP_SEEDS=("${FOLLOWUP_SEEDS[0]}")
   fi
 }

@@ -2,7 +2,7 @@
 
 This is an **extension of the original eight-replica study**, using the **same, frozen** Equation (16) dynamics and planner code. No changes to the training or benchmark source files are necessary. New commands live in `followup.py` and `cloud/run_followup_existing_instance.sh`.
 
-**Status:** renamed to `DRPETS_8replica_followup` and adapted for safe AWS follow-up execution. The complete repository-layout follow-up suite passes (68 tests and 30 subtests); reporting was regenerated from 960 original evaluation rows and checked for eight training replicas. Read-only verification of all eight real S3 checkpoints confirmed all 40 networks have three hidden layers. No new GPU experiment or AWS resource was launched by this adaptation.
+**Validation:** the baseline repository-layout follow-up suite passed 68 tests and 30 subtests; the five additional queue regressions and related deployment tests also pass. The deployed queue's startup passed all 73 tests and 33 subtests. Reporting was regenerated from 960 original evaluation rows and checked for eight training replicas. Read-only verification of all eight S3 checkpoints confirmed all 40 networks have three hidden layers. CPU tests and startup checks are not completed bridge/curve results.
 
 `example_results/` contains eight small raw evaluation CSV fixtures, **not** trained weights. Local validation copies of real parent artifacts are under ignored `results/parent-results/` and must not be committed or packaged as source. To run `audit`, `bridge` or `curves`, supply each required `development_seed_<seed>/` with `ensemble.pt`, `run_manifest.json`, `config.json`, `validation.csv` and `raw.csv`.
 
@@ -181,7 +181,24 @@ windows and can consume many GPU-hours; two 24-hour nodes can use 48 aggregate
 instance-hours plus cleanup grace. There is no automatic relaunch, implicit
 bridge or hard dollar cap.
 
-### 5b. Monitoring, recovery and validation
+### 5b. Explicit bridge-to-curves queue
+
+The default remains audit. To deliberately run the representative bridge and
+then all curve families on one host under a **shared** budget:
+
+```bash
+SHARD=ireland STAGE=bridge FAMILY=all BRIDGE_ALL=0 \
+  RUN_CURVES_AFTER_BRIDGE=1 MAX_HOURS=24 bash cloud/launch_followup_aws.sh
+```
+
+This requests 40 bridge episodes for seed 113, followed by 640 new curve
+episodes across Ireland's four replicas. `run_bridge_curves_existing_instance.sh`
+passes one absolute deadline to both stages: it does not grant 24 hours each.
+Each stage retains its own status/backup records. A nonzero bridge exit stops
+the queue before curves; unfinished jobs remain resumable with no auto-relaunch.
+No training or repeat of the original short evaluation is requested.
+
+### 5c. Monitoring, recovery and validation
 
 Inspect `/var/log/drpets/followup_bootstrap.log`, `nvidia-smi` and project logs
 through Session Manager. Log/status names include stage/shard and curve family,

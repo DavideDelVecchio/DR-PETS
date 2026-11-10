@@ -14,6 +14,7 @@ AWS_PROFILE="${AWS_PROFILE:-default}"
 STAGE="${STAGE:-audit}"
 FAMILY="${FAMILY:-actuation}"
 BRIDGE_ALL="${BRIDGE_ALL:-0}"
+RUN_CURVES_AFTER_BRIDGE="${RUN_CURVES_AFTER_BRIDGE:-0}"
 WORKERS="${WORKERS:-3}"
 MAX_HOURS="${MAX_HOURS:-2}"
 MODE="${MODE:-on-demand}"
@@ -104,6 +105,7 @@ export SHARD='$SHARD'
 export STAGE='$STAGE'
 export FAMILY='$FAMILY'
 export BRIDGE_ALL='$BRIDGE_ALL'
+export RUN_CURVES_AFTER_BRIDGE='$RUN_CURVES_AFTER_BRIDGE'
 export WORKERS='$WORKERS'
 export MAX_HOURS='$MAX_HOURS'
 mkdir -p /opt/drpets /var/log/drpets
@@ -116,7 +118,11 @@ set +e
   aws s3 cp 's3://$S3_BUCKET/$KEY' /tmp/drpets-followup.zip --region '$S3_REGION' --only-show-errors
   unzip -q /tmp/drpets-followup.zip
   cd '$PROJECT_NAME'
-  bash cloud/run_followup_existing_instance.sh
+  if [[ "\$RUN_CURVES_AFTER_BRIDGE" == 1 ]]; then
+    bash cloud/run_bridge_curves_existing_instance.sh
+  else
+    bash cloud/run_followup_existing_instance.sh
+  fi
 ) >/var/log/drpets/followup_bootstrap.log 2>&1
 STATUS=\$?
 set -e
@@ -139,4 +145,5 @@ echo "Launched $INSTANCE_ID: $SHARD $REGION $TYPE; follow-up=$STAGE family=$FAMI
 echo "Read-only parent: $S3_RESULTS_URI/"
 echo "Follow-up output: ${S3_URI%/}/"
 echo "Logs: ${S3_LOGS_URI%/}/"
+if [[ "$RUN_CURVES_AFTER_BRIDGE" == 1 ]]; then echo 'Queued: representative bridge, then all physics-curve families; one shared deadline.'; fi
 echo 'No development/retraining jobs were requested. Verify actual instance state and billing.'
