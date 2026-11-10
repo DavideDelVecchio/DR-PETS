@@ -1,0 +1,89 @@
+{
+  "name": "DR-PETS Eq16 two-region eight-replica development study",
+  "design_version": 1,
+  "regions": {
+    "frankfurt": {
+      "region": "eu-central-1",
+      "seeds": [
+        101,
+        103,
+        107,
+        109
+      ],
+      "bridge": [
+        101
+      ]
+    },
+    "ireland": {
+      "region": "eu-west-1",
+      "seeds": [
+        113,
+        127,
+        131,
+        137
+      ],
+      "bridge": [
+        113
+      ]
+    }
+  },
+  "validation": {
+    "epsilon_grid": [
+      0,
+      0.0001,
+      0.001
+    ],
+    "selection": "mean_shift",
+    "seeds_per_shift": 3,
+    "physics_shifts": [
+      "low_mass",
+      "high_mass",
+      "low_friction",
+      "high_friction",
+      "weak_motor"
+    ],
+    "episode_steps": 150
+  },
+  "evaluation": {
+    "seeds_per_condition": 10,
+    "physics_conditions": [
+      "nominal",
+      "low_mass",
+      "high_mass",
+      "low_friction",
+      "high_friction",
+      "weak_motor"
+    ],
+    "episode_steps": 150,
+    "two_controllers": true
+  },
+  "bridge": {
+    "seeds_per_condition": 5,
+    "physics_conditions": [
+      "nominal",
+      "low_mass",
+      "high_friction",
+      "weak_motor"
+    ],
+    "episode_steps": 1000
+  },
+  "architecture": {
+    "ensemble": 5,
+    "width": 128,
+    "depth": 3
+  },
+  "planner": {
+    "horizon": 15,
+    "population": 64,
+    "particles_per_model": 16,
+    "cem_iterations": 3,
+    "chunk": 16
+  },
+  "stage1_counts": {
+    "replicates": 8,
+    "validation_episodes": 360,
+    "heldout_episodes": 960,
+    "total": 1320
+  },
+  "status": "prepared, not deployed"
+}

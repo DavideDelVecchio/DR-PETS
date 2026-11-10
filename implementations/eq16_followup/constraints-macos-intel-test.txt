@@ -1,0 +1,6 @@
+# Local CPU integration tests on Intel macOS only.
+# Do not apply these pins to Linux/CUDA DLAMI deployments.
+torch==2.2.2
+numpy==1.26.4
+gymnasium==1.2.2
+mujoco==3.3.7
